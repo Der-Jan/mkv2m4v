@@ -30,7 +30,7 @@ if [ "$format" == "mkv" ]; then
 		addmp4file=( ${addmp4file[@]-} $( mediainfo --Inform="Text;-add $demuxdir/%ID%%Language/String3%.srt:lang=%Language/String3%:group=2 " "$inputfile" ) )
 	fi
 # check broken matroska - has to be handled via mkvextract
-	if ffmpeg -i "$inputfile" -t 3 -vcodec copy -an -sn "$fifofile"; then
+	if ffmpeg -i "$inputfile" -t 3 -c:v copy -an -sn "$fifofile"; then
 		rm "$fifofile"
 	else
 		rm "$fifofile"
@@ -59,11 +59,11 @@ idlist=(`mediainfo --Inform="Audio;%ID% " "$1"` )
 
 vcodec=`mediainfo --Inform="Video;%Format%" "$1"` 
 if [ "$vcodec" == "AVC" ]; then
-	vcodecsettings="-vcodec copy"
+	vcodecsettings="-c:v copy"
 	mkvextract+="1:$demuxdir/1.h264 "
 	mp4mux+="-add $demuxdir/1.h264 "
 else
-	vcodecsettings=" -crf 18.0 -vcodec libx264 -x264opts crf=18.0:level=4.1:vbv-bufsize=65200:vbv-maxrate=62500"
+	vcodecsettings=" -c:v libx264 -x264opts crf=18.0:level=4.1:vbv-bufsize=65200:vbv-maxrate=62500"
 	mkvextract+="1:$demuxdir/1.xvid "
 	mp4mux+="-add $demuxdir/1.xvid "
 fi
@@ -84,63 +84,47 @@ lang=${langlist[$counter]}
 trackid=$[${idlist[$counter]}-$idcorrect]
 [ -z "$trackid" ] && trackid=$[counter+1]
 [ -z "$lang" ] && lang="eng"
+if [ -z "$firstaudiochannel" ]; then
+	firstaudiochannel="x"
+else
+	addmp4opt+="mp4track --track-id ${trackCounter} --enabled false $fifofile;"
+fi
 if [ "$audio" == "AC-3" ] ; then
-	if [ -z "$firstaudiochannel" ]; then
-		firstaudiochannel="-acodec libfaac -ac 2 -ab 128k "
-	else
-		audiochannels=( ${audiochannels[@]-} -acodec libfaac -ac 2 -ab 128k -newaudio)
-		addmp4opt+="mp4track --track-id ${trackCounter} --enabled false $fifofile;"
-	fi
+	audiochannels=( ${audiochannels[@]-} -sample_fmt:a:$[trackCounter-2] flt -c:a:$[trackCounter-2] aac -ac:a:$[trackCounter-2] 2 -ab:a:$[trackCounter-2] 128k )
 	addmp4opt+="mp4track --track-id ${trackCounter} --altgroup 1 $fifofile; mp4track --track-id ${trackCounter} --udtaname Stereo_$lang $fifofile;mp4track --track-id ${trackCounter} --language $lang $fifofile;"
  	mapping+="-map 0:$trackid "
 	((trackCounter++))
-	audiochannels=( ${audiochannels[@]-} -acodec copy -newaudio)
-#	alternategroups+=":trackID=${trackCounter}"
+	audiochannels=( ${audiochannels[@]-} -c:a:$[trackCounter-2] copy )
 	addmp4opt+="mp4track --track-id ${trackCounter} --altgroup 1 $fifofile; mp4track --track-id ${trackCounter} --enabled false $fifofile; mp4track --track-id ${trackCounter} --udtaname Surround_$lang $fifofile;mp4track --track-id ${trackCounter} --language $lang $fifofile;"
 	mapping+="-map 0:$trackid "
 	mkvextract+="$[counter+2]:$demuxdir/$[counter+2].ac3 "
 	mp4mux+="-add $demuxdir/$[counter+2].ac3 "
 	((trackCounter++))
 elif [ "$audio" == "DTS" ] ; then
-	if [ -z "$firstaudiochannel" ]; then
-		firstaudiochannel="-acodec libfaac -ac 2 -ab 128k "
-	else
-		audiochannels=( ${audiochannels[@]-} -acodec libfaac -ac 2 -ab 128k -alang $lang -newaudio)
-		addmp4opt+="mp4track --track-id ${trackCounter} --enabled false $fifofile;"
-	fi
+	audiochannels=( ${audiochannels[@]-} -sample_fmt:a:$[trackCounter-2] flt -c:a:$[trackCounter-2] aac -ac:a:$[trackCounter-2] 2 -ab:a:$[trackCounter-2] 128k )
 	addmp4opt+="mp4track --track-id ${trackCounter} --altgroup 1 $fifofile; mp4track --track-id ${trackCounter} --udtaname Stereo_$lang $fifofile;"
 	mapping+="-map 0:$trackid "
 	((trackCounter++))
 	addmp4opt+="mp4track --track-id ${trackCounter} --altgroup 1 $fifofile; mp4track --track-id ${trackCounter} --enabled false $fifofile;  mp4track --track-id ${trackCounter} --udtaname Surround_$lang $fifofile;mp4track --track-id ${trackCounter} --language $lang $fifofile;"
 	mapping+="-map 0:$trackid "
 	if [ $muxfile -gt 0 ]; then
-		audiochannels=( ${audiochannels[@]-} -acodec copy -newaudio)
+		audiochannels=( ${audiochannels[@]-} -c:a:$[trackCounter-2] copy )
 	else
-		audiochannels=( ${audiochannels[@]-} -acodec ac3 -ac $channels -ab 640k -newaudio)
+		audiochannels=( ${audiochannels[@]-} -c:a:$[trackCounter-2] ac3 -ac:a:$[trackCounter-2] $channels -ab:a:$[trackCounter-2] 640k )
 	fi
 	mkvextract+="$[counter+2]:$demuxdir/$[counter+2].dts "
-	dtsconvert+="ffmpeg -i $demuxdir/$[counter+2].dts -acodec ac3 -ac $channels -ab 640k $demuxdir/$[counter+2].ac3; "
+	dtsconvert+="ffmpeg -i $demuxdir/$[counter+2].dts -c:a ac3 -ac $channels -ab 640k $demuxdir/$[counter+2].ac3; "
 	mp4mux+="-add $demuxdir/$[counter+2].ac3 "
 	((trackCounter++))
 elif [ "$audio" == "AAC" ] ; then
-	if [ -z "$firstaudiochannel" ]; then
-		firstaudiochannel="-acodec copy -alang $lang"
-	else
-		audiochannels=( ${audiochannels[@]-} -acodec copy -newaudio)
-		addmp4opt+="mp4track --track-id ${trackCounter} --enabled false $fifofile;"
-	fi
+	audiochannels=( ${audiochannels[@]-} -c:a:$[trackCounter-2] copy )
 	addmp4opt+="mp4track --track-id ${trackCounter} --altgroup 1 $fifofile; mp4track --track-id ${trackCounter} --udtaname Stereo_$lang $fifofile;mp4track --track-id ${trackCounter} --language $lang $fifofile;"
 	mapping+="-map 0:$trackid "
 	mkvextract+="$[counter+2]:$demuxdir/$[counter+2].aac "
 	mp4mux+="-add $demuxdir/$[counter+2].aac "
 	((trackCounter++))
 else
-	if [ -z "$firstaudiochannel" ]; then
-		firstaudiochannel="-acodec libfaac -ac $channels -ab 128k"
-	else
-		audiochannels=( ${audiochannels[@]-} -acodec libfaac -ac $channels -ab 128k -newaudio)
-		addmp4opt+="mp4track --track-id ${trackCounter} --enabled false $fifofile;"
-	fi
+	audiochannels=( ${audiochannels[@]-} -sample_fmt:a:$[trackCounter-2] flt -c:a:$[trackCounter-2] aac -ac:a:$[trackCounter-2] $channels -ab:a:$[trackCounter-2] 128k )
 	addmp4opt+="mp4track --track-id ${trackCounter} --altgroup 1 $fifofile; mp4track --track-id ${trackCounter} --udtaname Stereo_$lang $fifofile;mp4track --track-id ${trackCounter} --language $lang $fifofile;"
 	mapping+="-map 0:$trackid "
 	mkvextract+="$[counter+2]:$demuxdir/$[counter+2].mp3 "
@@ -162,7 +146,7 @@ fi
 
 # FIXME mapping for m2ts
 [ $format == "m2ts" ] && mapping=""
-ffmpeg -threads 8 -i "$inputfile" $vcodecsettings $firstaudiochannel -sn "$fifofile" $mapping ${audiochannels[@]} 
+ffmpeg -threads 8 -i "$inputfile" $mapping $vcodecsettings -strict -2 -sn ${audiochannels[@]} "$fifofile" 
 if [ $( ls -l "$fifofile" | awk '{ print $5; }') -gt 400000000000 ]; then
 	offset=0
 	declare -a partfiles

@@ -73,7 +73,7 @@ if [ -f "$outputfile" ]; then
 fi
 # mkfifo "$fifofile"
 alternategroups=""
-mapping="-map 0.$[`mediainfo --Inform=\"Video;%ID%\" \"$inputfile\"`-$idcorrect] "
+mapping="-map 0:$[`mediainfo --Inform=\"Video;%ID%\" \"$inputfile\"`-$idcorrect] "
 declare -a audiochannels
 counter=0
 trackCounter=2
@@ -92,12 +92,12 @@ if [ "$audio" == "AC-3" ] ; then
 		addmp4opt+="mp4track --track-id ${trackCounter} --enabled false $fifofile;"
 	fi
 	addmp4opt+="mp4track --track-id ${trackCounter} --altgroup 1 $fifofile; mp4track --track-id ${trackCounter} --udtaname Stereo_$lang $fifofile;mp4track --track-id ${trackCounter} --language $lang $fifofile;"
- 	mapping+="-map 0.$trackid "
+ 	mapping+="-map 0:$trackid "
 	((trackCounter++))
 	audiochannels=( ${audiochannels[@]-} -acodec copy -newaudio)
 #	alternategroups+=":trackID=${trackCounter}"
 	addmp4opt+="mp4track --track-id ${trackCounter} --altgroup 1 $fifofile; mp4track --track-id ${trackCounter} --enabled false $fifofile; mp4track --track-id ${trackCounter} --udtaname Surround_$lang $fifofile;mp4track --track-id ${trackCounter} --language $lang $fifofile;"
-	mapping+="-map 0.$trackid "
+	mapping+="-map 0:$trackid "
 	mkvextract+="$[counter+2]:$demuxdir/$[counter+2].ac3 "
 	mp4mux+="-add $demuxdir/$[counter+2].ac3 "
 	((trackCounter++))
@@ -109,10 +109,10 @@ elif [ "$audio" == "DTS" ] ; then
 		addmp4opt+="mp4track --track-id ${trackCounter} --enabled false $fifofile;"
 	fi
 	addmp4opt+="mp4track --track-id ${trackCounter} --altgroup 1 $fifofile; mp4track --track-id ${trackCounter} --udtaname Stereo_$lang $fifofile;"
-	mapping+="-map 0.$trackid "
+	mapping+="-map 0:$trackid "
 	((trackCounter++))
 	addmp4opt+="mp4track --track-id ${trackCounter} --altgroup 1 $fifofile; mp4track --track-id ${trackCounter} --enabled false $fifofile;  mp4track --track-id ${trackCounter} --udtaname Surround_$lang $fifofile;mp4track --track-id ${trackCounter} --language $lang $fifofile;"
-	mapping+="-map 0.$trackid "
+	mapping+="-map 0:$trackid "
 	if [ $muxfile -gt 0 ]; then
 		audiochannels=( ${audiochannels[@]-} -acodec copy -newaudio)
 	else
@@ -130,7 +130,7 @@ elif [ "$audio" == "AAC" ] ; then
 		addmp4opt+="mp4track --track-id ${trackCounter} --enabled false $fifofile;"
 	fi
 	addmp4opt+="mp4track --track-id ${trackCounter} --altgroup 1 $fifofile; mp4track --track-id ${trackCounter} --udtaname Stereo_$lang $fifofile;mp4track --track-id ${trackCounter} --language $lang $fifofile;"
-	mapping+="-map 0.$trackid "
+	mapping+="-map 0:$trackid "
 	mkvextract+="$[counter+2]:$demuxdir/$[counter+2].aac "
 	mp4mux+="-add $demuxdir/$[counter+2].aac "
 	((trackCounter++))
@@ -142,7 +142,7 @@ else
 		addmp4opt+="mp4track --track-id ${trackCounter} --enabled false $fifofile;"
 	fi
 	addmp4opt+="mp4track --track-id ${trackCounter} --altgroup 1 $fifofile; mp4track --track-id ${trackCounter} --udtaname Stereo_$lang $fifofile;mp4track --track-id ${trackCounter} --language $lang $fifofile;"
-	mapping+="-map 0.$trackid "
+	mapping+="-map 0:$trackid "
 	mkvextract+="$[counter+2]:$demuxdir/$[counter+2].mp3 "
 	mp4mux+="-add $demuxdir/$[counter+2].mp3 "
 	((trackCounter++))

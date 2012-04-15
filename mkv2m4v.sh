@@ -89,10 +89,10 @@ if [ -z "$firstaudiochannel" ]; then
 else
 	addmp4opt+="mp4track --track-id ${trackCounter} --enabled false $fifofile;"
 fi
+mapping+="-map 0:$trackid "
+addmp4opt+="mp4track --track-id ${trackCounter} --altgroup 1 $fifofile; mp4track --track-id ${trackCounter} --udtaname Stereo_$lang $fifofile;mp4track --track-id ${trackCounter} --language $lang $fifofile;"
 if [ "$audio" == "AC-3" ] ; then
 	audiochannels=( ${audiochannels[@]-} -sample_fmt:a:$[trackCounter-2] flt -c:a:$[trackCounter-2] aac -ac:a:$[trackCounter-2] 2 -ab:a:$[trackCounter-2] 128k )
-	addmp4opt+="mp4track --track-id ${trackCounter} --altgroup 1 $fifofile; mp4track --track-id ${trackCounter} --udtaname Stereo_$lang $fifofile;mp4track --track-id ${trackCounter} --language $lang $fifofile;"
- 	mapping+="-map 0:$trackid "
 	((trackCounter++))
 	audiochannels=( ${audiochannels[@]-} -c:a:$[trackCounter-2] copy )
 	addmp4opt+="mp4track --track-id ${trackCounter} --altgroup 1 $fifofile; mp4track --track-id ${trackCounter} --enabled false $fifofile; mp4track --track-id ${trackCounter} --udtaname Surround_$lang $fifofile;mp4track --track-id ${trackCounter} --language $lang $fifofile;"
@@ -102,8 +102,6 @@ if [ "$audio" == "AC-3" ] ; then
 	((trackCounter++))
 elif [ "$audio" == "DTS" ] ; then
 	audiochannels=( ${audiochannels[@]-} -sample_fmt:a:$[trackCounter-2] flt -c:a:$[trackCounter-2] aac -ac:a:$[trackCounter-2] 2 -ab:a:$[trackCounter-2] 128k )
-	addmp4opt+="mp4track --track-id ${trackCounter} --altgroup 1 $fifofile; mp4track --track-id ${trackCounter} --udtaname Stereo_$lang $fifofile;"
-	mapping+="-map 0:$trackid "
 	((trackCounter++))
 	addmp4opt+="mp4track --track-id ${trackCounter} --altgroup 1 $fifofile; mp4track --track-id ${trackCounter} --enabled false $fifofile;  mp4track --track-id ${trackCounter} --udtaname Surround_$lang $fifofile;mp4track --track-id ${trackCounter} --language $lang $fifofile;"
 	mapping+="-map 0:$trackid "
@@ -118,15 +116,11 @@ elif [ "$audio" == "DTS" ] ; then
 	((trackCounter++))
 elif [ "$audio" == "AAC" ] ; then
 	audiochannels=( ${audiochannels[@]-} -c:a:$[trackCounter-2] copy )
-	addmp4opt+="mp4track --track-id ${trackCounter} --altgroup 1 $fifofile; mp4track --track-id ${trackCounter} --udtaname Stereo_$lang $fifofile;mp4track --track-id ${trackCounter} --language $lang $fifofile;"
-	mapping+="-map 0:$trackid "
 	mkvextract+="$[counter+2]:$demuxdir/$[counter+2].aac "
 	mp4mux+="-add $demuxdir/$[counter+2].aac "
 	((trackCounter++))
 else
 	audiochannels=( ${audiochannels[@]-} -sample_fmt:a:$[trackCounter-2] flt -c:a:$[trackCounter-2] aac -ac:a:$[trackCounter-2] $channels -ab:a:$[trackCounter-2] 128k )
-	addmp4opt+="mp4track --track-id ${trackCounter} --altgroup 1 $fifofile; mp4track --track-id ${trackCounter} --udtaname Stereo_$lang $fifofile;mp4track --track-id ${trackCounter} --language $lang $fifofile;"
-	mapping+="-map 0:$trackid "
 	mkvextract+="$[counter+2]:$demuxdir/$[counter+2].mp3 "
 	mp4mux+="-add $demuxdir/$[counter+2].mp3 "
 	((trackCounter++))

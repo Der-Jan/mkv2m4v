@@ -141,38 +141,11 @@ fi
 # FIXME mapping for m2ts
 [ $format == "m2ts" ] && mapping=""
 ffmpeg -threads 8 -i "$inputfile" $mapping $vcodecsettings -strict -2 -sn ${audiochannels[@]} "$fifofile" 
-if [ $( ls -l "$fifofile" | awk '{ print $5; }') -gt 400000000000 ]; then
-	offset=0
-	declare -a partfiles
-	partdur=$[partfileduration*1000]
-
-	while [ $partdur -ge $[partfileduration*900] ]; do
-		partfile=$mp4tmp/part_$(printf "%05d" $offset).m4v
-		partfiles=( ${partfiles[@]-} $partfile )
-		
-		ffmpeg -threads 8 -t $partfileduration -ss ${offset} -i "$fifofile" -vcodec copy "$partfile"  
-		partdur=$( mediainfo --Inform="General;%Duration%" "$partfile" )
-		(( offset = offset + partfileduration ))
-	done
-
-	firstpart=${partfiles[0]}
-	unset partfiles[0]
-	for partfile in $partfiles; do
-		mp4concat+="-cat $partfile " 
-	done
-	[ -z "$mp4concat" ] || MP4Box -tmp $mp4tmp $firstpart $mp4concat
-	mv $firstpart "$fifofile"
-	[ -z ${partfiles[@]} ] || rm ${partfiles[@]}
-fi
-## MP4Box -tmp $mp4tmp "$fifofile" "${addmp4file[@]}" -add "$tmpvideo" -group-add refTrack=0$alternategroups
 [ -z "$addmp4opt" ] || eval $addmp4opt
 [ $(mediainfo --Inform="Video;%Width%" "$fifofile") -lt 769 ] || mp4tags -hdvideo 1 "$fifofile" 
 mp4file --optimize "$fifofile"
 [ -f "$chapterfile" ] && addmp4file=( ${addmp4file[@]-} -chap $chapterfile )
 [ -z "${addmp4file[0]}" ] || MP4Box -tmp $mp4tmp "$fifofile" "${addmp4file[@]}" 
 mv "$fifofile" "$outputfile"
-# MP4Box -tmp $mp4tmp "$fifofile" -out "$outputfile" "${addmp4file[@]}" -group-add refTrack=0$alternategroups
 touch -r "$inputfile" "$outputfile"
 rm -r $demuxdir
-## rm -f "$tmpvideo"
-#rm /tmp/mkv2m4v.m4v

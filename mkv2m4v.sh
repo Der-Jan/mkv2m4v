@@ -44,8 +44,6 @@ fi
 
 outputfile="${inputfile%.*}.m4v"
 [ -z "$2" ] || outputfile="$2/`basename \"${outputfile}\"`"
-outputdir="./"
-[ -z "$2" ] || outputdir="$2/"
 subtitlefile="${inputfile%.*}.srt"
 if [ -f "$subtitlefile" ]; then
 	addmp4file=( ${addmp4file[@]-} -add "$subtitlefile":lang=eng:group=2 )

@@ -56,14 +56,15 @@ langlist=(`mediainfo --Inform="Audio;%Language/String3% " "$1"` )
 idlist=(`mediainfo --Inform="Audio;%ID% " "$1"` )
 
 vcodec=`mediainfo --Inform="Video;%Format%" "$1"` 
+vid=(`mediainfo --Inform="Video;%ID% " "$1"` )
 if [ "$vcodec" == "AVC" ]; then
 	vcodecsettings="-c:v copy"
-	mkvextract+="1:$demuxdir/1.h264 "
-	mp4mux+="-add $demuxdir/1.h264 "
+	mkvextract+="$vid:$demuxdir/$vid.h264 "
+	mp4mux+="-add $demuxdir/$vid.h264 "
 else
 	vcodecsettings=" -c:v libx264 -x264opts crf=18.0:level=4.1:vbv-bufsize=65200:vbv-maxrate=62500"
-	mkvextract+="1:$demuxdir/1.xvid "
-	mp4mux+="-add $demuxdir/1.xvid "
+	mkvextract+="$vid:$demuxdir/$vid.xvid "
+	mp4mux+="-add $demuxdir/$vid.xvid "
 fi
 if [ -f "$outputfile" ]; then
 	echo "Deleting existing destination file $outputfile"
@@ -80,6 +81,7 @@ echo New track $audio
 channels=${channelslist[$counter]}
 lang=${langlist[$counter]}
 trackid=$[${idlist[$counter]}-$idcorrect]
+extractid=${idlist[$counter]}
 [ -z "$trackid" ] && trackid=$[counter+1]
 [ -z "$lang" ] && lang="eng"
 if [ -z "$firstaudiochannel" ]; then
@@ -95,7 +97,7 @@ if [ "$audio" == "AC-3" ] ; then
 	audiochannels=( ${audiochannels[@]-} -c:a:$[trackCounter-2] copy )
 	addmp4opt+="mp4track --track-id ${trackCounter} --altgroup 1 $fifofile; mp4track --track-id ${trackCounter} --enabled false $fifofile; mp4track --track-id ${trackCounter} --udtaname Surround_$lang $fifofile;mp4track --track-id ${trackCounter} --language $lang $fifofile;"
 	mapping+="-map 0:$trackid "
-	mkvextract+="$[counter+2]:$demuxdir/$[counter+2].ac3 "
+	mkvextract+="$extractid:$demuxdir/$[counter+2].ac3 "
 	mp4mux+="-add $demuxdir/$[counter+2].ac3 "
 	((trackCounter++))
 elif [ "$audio" == "DTS" ] ; then
@@ -108,18 +110,18 @@ elif [ "$audio" == "DTS" ] ; then
 	else
 		audiochannels=( ${audiochannels[@]-} -c:a:$[trackCounter-2] ac3 -ac:a:$[trackCounter-2] $channels -ab:a:$[trackCounter-2] 640k )
 	fi
-	mkvextract+="$[counter+2]:$demuxdir/$[counter+2].dts "
+	mkvextract+="$extractid:$demuxdir/$[counter+2].dts "
 	dtsconvert+="ffmpeg -i $demuxdir/$[counter+2].dts -c:a ac3 -ac $channels -ab 640k $demuxdir/$[counter+2].ac3; "
 	mp4mux+="-add $demuxdir/$[counter+2].ac3 "
 	((trackCounter++))
 elif [ "$audio" == "AAC" ] ; then
 	audiochannels=( ${audiochannels[@]-} -c:a:$[trackCounter-2] copy )
-	mkvextract+="$[counter+2]:$demuxdir/$[counter+2].aac "
+	mkvextract+="$extractid:$demuxdir/$[counter+2].aac "
 	mp4mux+="-add $demuxdir/$[counter+2].aac "
 	((trackCounter++))
 else
 	audiochannels=( ${audiochannels[@]-} -sample_fmt:a:$[trackCounter-2] flt -c:a:$[trackCounter-2] aac -ac:a:$[trackCounter-2] $channels -ab:a:$[trackCounter-2] 128k )
-	mkvextract+="$[counter+2]:$demuxdir/$[counter+2].mp3 "
+	mkvextract+="$extractid:$demuxdir/$[counter+2].mp3 "
 	mp4mux+="-add $demuxdir/$[counter+2].mp3 "
 	((trackCounter++))
 fi
@@ -138,7 +140,7 @@ fi
 
 # FIXME mapping for m2ts
 [ $format == "m2ts" ] && mapping=""
-ffmpeg -threads 8 -i "$inputfile" $mapping $vcodecsettings -strict -2 -sn ${audiochannels[@]} "$fifofile" 
+ffmpeg -i "$inputfile" $mapping $vcodecsettings -threads 8 -strict -2 -sn ${audiochannels[@]} "$fifofile" 
 [ -z "$addmp4opt" ] || eval $addmp4opt
 [ $(mediainfo --Inform="Video;%Width%" "$fifofile") -lt 769 ] || mp4tags -hdvideo 1 "$fifofile" 
 mp4file --optimize "$fifofile"

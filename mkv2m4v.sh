@@ -58,6 +58,8 @@ idlist=(`mediainfo --Inform="Audio;%ID% " "$1"` )
 
 vcodec=`mediainfo --Inform="Video;%Format%" "$1"` 
 vid=(`mediainfo --Inform="Video;%ID% " "$1"` )
+vfps=(`mediainfo --Inform="Video;%FrameRate% " "$1"` )
+[[ "$vfps" =~ ^[0-9]+ ]] && mp4mux+="-fps $vfps "
 if [ "$vcodec" == "AVC" ]; then
 	vcodecsettings="-c:v copy"
 	mkvextract+="$vid:$demuxdir/$vid.h264 "
@@ -103,6 +105,7 @@ if [ "$audio" == "AC-3" ] ; then
 	mkvextract+="$extractid:$demuxdir/$[counter+2].ac3 "
 	mp4mux+="-add $demuxdir/$[counter+2].ac3 "
 elif [ "$audio" == "DTS" ] ; then
+# FIXME convert to ac3 and aac in one step
     if [ $enableaaccnv -gt 0 ] ; then
 	    audiochannels=( ${audiochannels[@]-} -sample_fmt:a:$[trackCounter-2] flt -c:a:$[trackCounter-2] aac -ac:a:$[trackCounter-2] 2 -ab:a:$[trackCounter-2] 128k )
 	    ((trackCounter++))

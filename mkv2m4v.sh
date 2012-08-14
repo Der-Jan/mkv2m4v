@@ -1,4 +1,4 @@
-#!/b in/bash
+#!/bin/bash
 set -e
 enableaaccnv=1
 mp4tmp=.
@@ -39,7 +39,7 @@ if [ "$format" == "mkv" ]; then
 		rm "$fifofile"
 		muxfile=1
 	fi
-else if [ "$format" == "mp4" ]; then
+else if [ "$format" == "mp4" ] || [ "$format" == "m4v" ]; then
 	idcorrect=1
     subids=$( mediainfo --Inform="Text;%ID% " "$inputfile" )
     if [ -n "$subids" ]; then

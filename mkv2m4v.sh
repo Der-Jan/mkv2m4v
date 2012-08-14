@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/b in/bash
 set -e
 enableaaccnv=1
 mp4tmp=.
@@ -16,6 +16,8 @@ demuxdir=$mp4tmp/m2mtrack
 mkdir $demuxdir
 chapterfile=$demuxdir/tmp.chapters
 idcorrect=0
+subtitles="-sn"
+submapping=""
 if [ "$format" == "mkv" ]; then
 	idcorrect=1
 	if mkvextract chapters -s "$inputfile" >$chapterfile && [ -n "`cat $chapterfile`" ]; then 
@@ -39,6 +41,13 @@ if [ "$format" == "mkv" ]; then
 	fi
 else if [ "$format" == "mp4" ]; then
 	idcorrect=1
+    subids=$( mediainfo --Inform="Text;%ID% " "$inputfile" )
+    if [ -n "$subids" ]; then
+        subtitles="-c:s copy"
+        for subid in $subids; do
+            submapping+="-map 0:$[$subid - $idcorrect] "
+        done    
+    fi    
 fi
 fi
 [ $format == "wmv" ] && idcorrect=1
@@ -121,6 +130,13 @@ elif [ "$audio" == "DTS" ] ; then
 	dtsconvert+="ffmpeg -i $demuxdir/$[counter+2].dts -c:a ac3 -ac $channels -ab 640k $demuxdir/$[counter+2].ac3; "
 	mp4mux+="-add $demuxdir/$[counter+2].ac3 "
 elif [ "$audio" == "AAC" ] ; then
+    if [ $enableaaccnv -gt 0 ] && [ $channels -gt 2 ]; then
+        audiochannels=( ${audiochannels[@]-} -sample_fmt:a:$[trackCounter-2] flt -c:a:$[trackCounter-2] ac3 -ac:a:$[    trackCounter-2] $channels -ab:a:$[trackCounter-2] 640k )
+        ((trackCounter++))
+        addmp4opt+="mp4track --track-id ${trackCounter} --altgroup 1 $fifofile; mp4track --track-id ${trackCounter} --enabled false $fifofile; mp4track --track-id ${trackCounter} --udtaname Surround_$lang $fifofile;mp4track --track-id ${trackCounter} --language $lang $fifofile;"
+        mapping+="-map 0:$trackid "
+    fi
+
 	audiochannels=( ${audiochannels[@]-} -c:a:$[trackCounter-2] copy )
 	mkvextract+="$extractid:$demuxdir/$[counter+2].aac "
 	mp4mux+="-add $demuxdir/$[counter+2].aac "
@@ -145,7 +161,7 @@ fi
 
 # FIXME mapping for m2ts
 [ $format == "m2ts" ] && mapping=""
-ffmpeg -i "$inputfile" $mapping $vcodecsettings -threads 8 -strict -2 -sn ${audiochannels[@]} "$fifofile" 
+ffmpeg -i "$inputfile" $mapping $submapping $vcodecsettings -threads 8 -strict -2 ${subtitles} ${audiochannels[@]} "$fifofile" 
 [ -z "$addmp4opt" ] || eval $addmp4opt
 [ $(mediainfo --Inform="Video;%Width%" "$fifofile") -lt 769 ] || mp4tags -hdvideo 1 "$fifofile" 
 mp4file --optimize "$fifofile"

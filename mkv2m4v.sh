@@ -7,8 +7,8 @@ fifofile=$mp4tmp/tmp_fifo.m4v
 partfileduration=600
 rm -f "$fifofile"
 ## rm -f "$tmpvideo"
-inputfile=$1
-format=`mediainfo --Inform="General;%FileExtension%" "$1"` 
+inputfile=$(cygpath -C ANSI -w "${1}")
+format=`mediainfo --Inform="General;%FileExtension%" "$inputfile"` 
 
 muxfile=0
 demuxdir=$mp4tmp/m2mtrack
@@ -52,29 +52,29 @@ fi
 fi
 [ $format == "wmv" ] && idcorrect=1
 
-outputfile="${inputfile%.*}.m4v"
+outputfile="${1%.*}.m4v"
 [ -z "$2" ] || outputfile="$2/`basename \"${outputfile}\"`"
 subtitlefile="${inputfile%.*}.srt"
 if [ -f "$subtitlefile" ]; then
 	addmp4file=( ${addmp4file[@]-} -add "$subtitlefile":lang=eng:group=2 )
 fi
 declare -a audiolist
-audiolist=(`mediainfo --Inform="Audio;%Format%:" "$1"| awk '{ gsub(" ","_");gsub(":"," "); print; }' ` )
+audiolist=(`mediainfo --Inform="Audio;%Format%:" "$inputfile"| awk '{ gsub(" ","_");gsub(":"," "); print; }' ` )
 declare -a channelslist 
-channelslist=(`mediainfo --Inform="Audio;%Channels% " "$1"`) 
-langlist=(`mediainfo --Inform="Audio;%Language/String3% " "$1"` )
-idlist=(`mediainfo --Inform="Audio;%ID% " "$1"` )
+channelslist=(`mediainfo --Inform="Audio;%Channels% " "$inputfile"`) 
+langlist=(`mediainfo --Inform="Audio;%Language/String3% " "$inputfile"` )
+idlist=(`mediainfo --Inform="Audio;%ID% " "$inputfile"` )
 
-vcodec=`mediainfo --Inform="Video;%Format%" "$1"` 
-vid=(`mediainfo --Inform="Video;%ID% " "$1"` )
-vfps=(`mediainfo --Inform="Video;%FrameRate% " "$1"` )
+vcodec=`mediainfo --Inform="Video;%Format%" "$inputfile"` 
+vid=(`mediainfo --Inform="Video;%ID% " "$inputfile"` )
+vfps=(`mediainfo --Inform="Video;%FrameRate% " "$inputfile"` )
 [[ "$vfps" =~ ^[0-9]+ ]] && mp4mux+="-fps $vfps "
 if [ "$vcodec" == "AVC" ]; then
 	vcodecsettings="-c:v copy"
 	mkvextract+="$vid:$demuxdir/$vid.h264 "
 	mp4mux+="-add $demuxdir/$vid.h264 "
 else
-	vcodecsettings=" -c:v libx264 -x264opts crf=18.0:level=4.1:vbv-bufsize=65200:vbv-maxrate=62500"
+	vcodecsettings=" -c:v hevc_nvenc -rc constqp -preset medium "
 	mkvextract+="$vid:$demuxdir/$vid.xvid "
 	mp4mux+="-add $demuxdir/$vid.xvid "
 fi
@@ -84,7 +84,7 @@ if [ -f "$outputfile" ]; then
 fi
 # mkfifo "$fifofile"
 alternategroups=""
-mapping="-map 0:$[`mediainfo --Inform=\"Video;%ID%\" \"$inputfile\"`-$idcorrect] "
+mapping="-map 0:$[vid-idcorrect] "
 declare -a audiochannels
 counter=0
 trackCounter=2
@@ -92,7 +92,7 @@ for audio in "${audiolist[@]}"; do
 echo New track $audio
 channels=${channelslist[$counter]}
 lang=${langlist[$counter]}
-trackid=$[${idlist[$counter]}-$idcorrect]
+trackid=$[idlist[$counter]-idcorrect]
 extractid=${idlist[$counter]}
 [ -z "$trackid" ] && trackid=$[counter+1]
 [ -z "$lang" ] && lang="eng"
@@ -146,7 +146,7 @@ else
 	mp4mux+="-add $demuxdir/$[counter+2].mp3 "
 fi
 ((trackCounter++))
-((counter++))
+counter=$[counter+1]
 done
 
 if [ $muxfile -gt 0 ]; then

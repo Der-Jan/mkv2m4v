@@ -45,7 +45,7 @@ else if [ "$format" == "mp4" ] || [ "$format" == "m4v" ]; then
     if [ -n "$subids" ]; then
         subtitles="-c:s copy"
         for subid in $subids; do
-            submapping+="-map 0:$[$subid - $idcorrect] "
+            submapping+="-map 0:$[subid - idcorrect] "
         done    
     fi    
 fi
@@ -74,7 +74,7 @@ if [ "$vcodec" == "AVC" ]; then
 	mkvextract+="$vid:$demuxdir/$vid.h264 "
 	mp4mux+="-add $demuxdir/$vid.h264 "
 else
-	vcodecsettings=" -c:v hevc_nvenc -rc constqp -preset medium "
+	vcodecsettings=" -c:v h264_nvenc -rc vbr_minqp -level 4.1 -qmin 20 -preset medium "
 	mkvextract+="$vid:$demuxdir/$vid.xvid "
 	mp4mux+="-add $demuxdir/$vid.xvid "
 fi
@@ -84,7 +84,7 @@ if [ -f "$outputfile" ]; then
 fi
 # mkfifo "$fifofile"
 alternategroups=""
-mapping="-map 0:$[vid-idcorrect] "
+mapping="-map 0:$[vid - idcorrect] "
 declare -a audiochannels
 counter=0
 trackCounter=2
@@ -92,7 +92,8 @@ for audio in "${audiolist[@]}"; do
 echo New track $audio
 channels=${channelslist[$counter]}
 lang=${langlist[$counter]}
-trackid=$[idlist[$counter]-idcorrect]
+trackid=${idlist[$counter]}
+trackid=$[trackid - idcorrect]
 extractid=${idlist[$counter]}
 [ -z "$trackid" ] && trackid=$[counter+1]
 [ -z "$lang" ] && lang="eng"
@@ -141,7 +142,7 @@ elif [ "$audio" == "AAC" ] ; then
 	mkvextract+="$extractid:$demuxdir/$[counter+2].aac "
 	mp4mux+="-add $demuxdir/$[counter+2].aac "
 else
-	audiochannels=( ${audiochannels[@]-} -sample_fmt:a:$[trackCounter-2] flt -c:a:$[trackCounter-2] aac -ac:a:$[trackCounter-2] $channels -ab:a:$[trackCounter-2] 128k )
+	audiochannels=( ${audiochannels[@]-} -c:a:$[trackCounter-2] aac -ac:a:$[trackCounter-2] $channels -ab:a:$[trackCounter-2] 128k )
 	mkvextract+="$extractid:$demuxdir/$[counter+2].mp3 "
 	mp4mux+="-add $demuxdir/$[counter+2].mp3 "
 fi
